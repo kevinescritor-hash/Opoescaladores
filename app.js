@@ -1,50 +1,53 @@
-// ELIMINAMOS la línea de "import" porque ya cargamos Firebase en el HTML
-// con las etiquetas <script src="...">
-
 const firebaseConfig = {
   apiKey: "AIzaSyAPFcmkmAibJoRdHKS5ZrRy_fLuLysY1ZA",
   authDomain: "escaladoresopo.firebaseapp.com",
   projectId: "escaladoresopo",
-  storageBucket: "escaladoresopo.firebasestorage.app", // Corregido: .app en lugar de .com
+  storageBucket: "escaladoresopo.firebasestorage.app",
   messagingSenderId: "1046020869775",
   appId: "1:1046020869775:web:76467fc5317a775d3d6afa"
 };
 
-// Inicialización necesaria para la versión "compat" que usamos en el HTML
 firebase.initializeApp(firebaseConfig);
-
 const auth = firebase.auth();
 const db = firebase.firestore();
 const provider = new firebase.auth.GoogleAuthProvider();
 
-const SCALE = 20; // 1 hora = 20 píxeles
+const SCALE = 20;
 
-// Dibujar metas
+// 1. Decorar con Cabras y Metas
 const world = document.getElementById('world');
-for(let i=30; i<=300; i+=30) {
-    const meta = document.createElement('div');
-    meta.className = 'milestone';
-    meta.style.bottom = (i * SCALE) + 'px';
-    meta.innerHTML = `🚩 ${i}h - META`;
-    world.appendChild(meta);
+function initWorld() {
+    // Metas cada 30h
+    for(let i=30; i<=300; i+=30) {
+        const meta = document.createElement('div');
+        meta.className = 'milestone';
+        meta.style.bottom = (i * SCALE) + 'px';
+        meta.innerHTML = `🚩 Meta ${i}h`;
+        world.appendChild(meta);
+    }
+    // Cabras aleatorias
+    for(let i=0; i<15; i++) {
+        const goat = document.createElement('div');
+        goat.className = 'goat';
+        goat.innerText = '🐐';
+        goat.style.bottom = (Math.random() * 5500 + 200) + 'px';
+        goat.style.left = (Math.random() * 60 + 20) + '%';
+        world.appendChild(goat);
+    }
 }
+initWorld();
 
-// Login (Global para que el botón del HTML lo vea)
-window.loginConGoogle = function() { 
-    auth.signInWithPopup(provider).catch(err => console.error("Error login:", err)); 
-};
+// 2. Login
+window.loginConGoogle = () => auth.signInWithPopup(provider);
 
-// Persistencia y Escucha en Tiempo Real
+// 3. Persistencia
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-content').style.display = 'flex';
-        
-        // Escuchar a todos los escaladores
-        db.collection('escaladores').onSnapshot(snapshot => {
-            // Limpiamos solo los escaladores, no las metas
+        db.collection('escaladores').onSnapshot(snap => {
             document.querySelectorAll('.climber').forEach(el => el.remove());
-            snapshot.forEach(doc => renderClimber(doc.id, doc.data(), user.uid));
+            snap.forEach(doc => renderClimber(doc.id, doc.data(), user.uid));
         });
     } else {
         document.getElementById('login-screen').style.display = 'flex';
@@ -52,58 +55,49 @@ auth.onAuthStateChanged(user => {
     }
 });
 
+// 4. Renderizado de Escaladores con Color
 function renderClimber(id, data, myUid) {
     const div = document.createElement('div');
     div.className = 'climber';
     if(id === myUid) div.id = 'my-climber';
     
     div.style.bottom = (data.horasTotales * SCALE) + 'px';
-    // Posición horizontal basada en el ID para evitar solapamientos
     const offset = (id.charCodeAt(0) % 40) - 20;
     div.style.left = `calc(50% + ${offset}%)`;
 
     div.innerHTML = `
-        <img src="${data.foto}" style="border: 4px solid ${data.color || '#27ae60'}">
-        <div class="label">${data.nombre} (${data.horasTotales.toFixed(1)}h)</div>
+        <div class="climber-icon" style="color: ${data.color || '#ffffff'}">🧗‍♂️</div>
+        <div class="label" style="border-top: 3px solid ${data.color}">${data.nombre} (${data.horasTotales.toFixed(1)}h)</div>
     `;
 
-    div.onclick = () => alert(`Log de ${data.nombre}:\n${data.ultimoLog || "Sin registros"}`);
+    div.onclick = () => alert(`${data.nombre} dice:\n"${data.ultimoLog || '¡Subiendo!'}"`);
     world.appendChild(div);
 
-    // Zoom suave al propio escalador al cargar
     if(id === myUid) {
-        setTimeout(() => {
-            div.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 500);
+        setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
     }
 }
 
-// Función global para el botón
-window.addSession = async function() {
+// 5. Añadir sesión
+window.addSession = async () => {
     const user = auth.currentUser;
-    const hInput = document.getElementById('hInput');
-    const dInput = document.getElementById('dInput');
-    const cInput = document.getElementById('colorPicker');
-
-    const h = parseFloat(hInput.value);
-    const d = dInput.value;
-    const c = cInput.value;
+    const h = parseFloat(document.getElementById('hInput').value);
+    const d = document.getElementById('dInput').value;
+    const c = document.getElementById('colorPicker').value;
 
     if (user && h > 0) {
-        try {
-            await db.collection('escaladores').doc(user.uid).set({
-                nombre: user.displayName,
-                foto: user.photoURL,
-                color: c,
-                horasTotales: firebase.firestore.FieldValue.increment(h),
-                ultimoLog: `[${h}h] ${d}`
-            }, { merge: true });
-            
-            hInput.value = '';
-            dInput.value = '';
-        } catch (error) {
-            console.error("Error guardando datos:", error);
-            alert("Error al guardar. Revisa las reglas de Firestore.");
-        }
+        await db.collection('escaladores').doc(user.uid).set({
+            nombre: user.displayName,
+            color: c,
+            horasTotales: firebase.firestore.FieldValue.increment(h),
+            ultimoLog: d || "Estudiando duro"
+        }, { merge: true });
+        document.getElementById('hInput').value = '';
+        document.getElementById('dInput').value = '';
     }
 };
+
+// 6. Service Worker para Instalación
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(e => console.error(e));
+}
