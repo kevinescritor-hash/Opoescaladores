@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mountain Study PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root { --sky-blue: #87CEEB; --mtn-color: #4b3621; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; scroll-behavior: smooth; }
+
+        /* Fondo Animado */
+        .sky {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #1e3c72, #2a5298, #87CEEB);
+            z-index: -2;
+        }
+        .cloud {
+            position: absolute; background: white; border-radius: 50px; opacity: 0.7;
+            animation: moveClouds linear infinite;
+        }
+        @keyframes moveClouds { from { left: -200px; } to { left: 100vw; } }
+
+        /* Montaña y Contenedor */
+        .world { position: relative; width: 100%; height: 6500px; display: flex; justify-content: center; }
+        .mountain-svg {
+            position: absolute; bottom: 0; width: 100%; max-width: 1000px; 
+            height: 6000px; fill: var(--mtn-color); z-index: -1;
+        }
+
+        /* Metas */
+        .milestone {
+            position: absolute; width: 100%; border-bottom: 2px dashed rgba(255,255,255,0.3);
+            color: white; font-size: 0.9rem; padding-left: 10px; display: flex; align-items: center;
+        }
+
+        /* Escalador */
+        .climber {
+            position: absolute; transition: all 1.5s ease;
+            display: flex; flex-direction: column; align-items: center; cursor: pointer;
+            z-index: 10;
+        }
+        .climber img { width: 50px; height: 50px; border-radius: 50%; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        .label { background: rgba(0,0,0,0.8); color: white; border-radius: 5px; padding: 2px 6px; font-size: 11px; margin-top: 5px; white-space: nowrap; }
+
+        /* UI Paneles */
+        #login-screen {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .ui-panel {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.95); padding: 15px; border-radius: 20px;
+            display: none; flex-direction: column; gap: 10px; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        input, button { padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+        button { background: #27ae60; color: white; font-weight: bold; cursor: pointer; border: none; }
+    </style>
+</head>
+<body>
+
+<div class="sky">
+    <div class="cloud" style="width:120px; height:40px; top:15%; animation-duration:25s;"></div>
+    <div class="cloud" style="width:180px; height:60px; top:45%; animation-duration:40s; animation-delay:-10s;"></div>
+</div>
+
+<div id="login-screen">
+    <h1 style="color:white;">Mountain Study</h1>
+    <button onclick="loginConGoogle()" style="padding: 15px 30px; font-size: 1.2rem;">Entrar con Google</button>
+</div>
+
+<div class="world" id="world">
+    <svg class="mountain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <polygon points="50,0 100,100 0,100"/>
+    </svg>
+</div>
+
+<div class="ui-panel" id="app-content">
+    <div style="display:flex; gap:5px;">
+        <input type="number" id="hInput" placeholder="Hrs" style="width:60px;">
+        <input type="text" id="dInput" placeholder="¿Qué estudiaste?" style="flex-grow:1;">
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <input type="color" id="colorPicker" value="#27ae60">
+        <button onclick="addSession()" style="flex-grow:1;">AÑADIR ESTUDIO</button>
+        <button onclick="auth.signOut()" style="background:#c0392b;">X</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
