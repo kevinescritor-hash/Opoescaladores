@@ -14,73 +14,47 @@ const provider = new firebase.auth.GoogleAuthProvider();
 
 const SCALE = 20;
 
-// 1. Función para abrir/cerrar panel
+// 1. UI Control
 window.togglePanel = () => {
-    const panel = document.getElementById('app-content');
-    panel.classList.toggle('open');
+    document.getElementById('app-content').classList.toggle('open');
 };
 
-// 2. Modificación de addSession para permitir negativos
-window.addSession = async () => {
-    const user = auth.currentUser;
-    const hInput = document.getElementById('hInput');
-    const dInput = document.getElementById('dInput');
-    const cInput = document.getElementById('colorPicker');
-
-    const h = parseFloat(hInput.value);
-    
-    // Ahora solo pedimos que h no sea 0 (para permitir negativos)
-    if (user && h !== 0) {
-        await db.collection('escaladores').doc(user.uid).set({
-            nombre: user.displayName,
-            color: cInput.value,
-            // FieldValue.increment funciona perfectamente con números negativos para restar
-            horasTotales: firebase.firestore.FieldValue.increment(h),
-            ultimoLog: dInput.value || (h > 0 ? "Subiendo..." : "Bajando un poco")
-        }, { merge: true });
-        
-        hInput.value = '';
-        dInput.value = '';
-        togglePanel(); // Cerramos el panel automáticamente al terminar
-    }
-};
-
-// 3. Renderizado con auto-scroll mejorado
-function renderClimber(id, data, myUid) {
-    const div = document.createElement('div');
-    div.className = 'climber';
-    
-    // Aseguramos que las horas no bajen de 0 visualmente
-    const posicionReal = Math.max(0, data.horasTotales);
-    div.style.bottom = (posicionReal * SCALE) + 'px';
-    
-    const offset = (id.charCodeAt(0) % 40) - 20;
-    div.style.left = `calc(50% + ${offset}%)`;
-
-    div.innerHTML = `
-        <div class="climber-icon" style="color: ${data.color || '#ffffff'}">🧗‍♂️</div>
-        <div class="label" style="border-top: 3px solid ${data.color}">${data.nombre} (${data.horasTotales.toFixed(1)}h)</div>
-    `;
-
-    div.onclick = () => alert(`${data.nombre}:\n"${data.ultimoLog}"`);
-    world.appendChild(div);
-
-    // AUTO-SCROLL: Solo cuando es nuestro escalador
-    if(id === myUid) {
-        // Usamos un pequeño delay para que el DOM se asiente
-        setTimeout(() => {
-            div.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 800);
-    }
+// 2. Metas de la montaña
+const world = document.getElementById('world');
+for(let i=30; i<=300; i+=30) {
+    const meta = document.createElement('div');
+    meta.className = 'milestone';
+    meta.style.bottom = (i * SCALE) + 'px';
+    meta.innerHTML = `🚩 Meta ${i}h`;
+    world.appendChild(meta);
 }
 
-// 4. Renderizado de Escaladores con Color
+// 3. Login/Auth
+window.loginConGoogle = () => auth.signInWithPopup(provider);
+
+auth.onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('toggle-panel').style.display = 'block';
+        db.collection('escaladores').onSnapshot(snap => {
+            document.querySelectorAll('.climber').forEach(el => el.remove());
+            snap.forEach(doc => renderClimber(doc.id, doc.data(), user.uid));
+        });
+    } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('toggle-panel').style.display = 'none';
+        document.getElementById('app-content').classList.remove('open');
+    }
+});
+
+// 4. Renderizado y Auto-Scroll
 function renderClimber(id, data, myUid) {
     const div = document.createElement('div');
     div.className = 'climber';
     if(id === myUid) div.id = 'my-climber';
     
-    div.style.bottom = (data.horasTotales * SCALE) + 'px';
+    const posVisual = Math.max(0, data.horasTotales);
+    div.style.bottom = (posVisual * SCALE) + 'px';
     const offset = (id.charCodeAt(0) % 40) - 20;
     div.style.left = `calc(50% + ${offset}%)`;
 
@@ -93,30 +67,31 @@ function renderClimber(id, data, myUid) {
     world.appendChild(div);
 
     if(id === myUid) {
-        setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+        setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
     }
 }
 
-// 5. Añadir sesión
+// 5. Gestión de Sesiones (Subir/Bajar)
 window.addSession = async () => {
     const user = auth.currentUser;
     const h = parseFloat(document.getElementById('hInput').value);
     const d = document.getElementById('dInput').value;
     const c = document.getElementById('colorPicker').value;
 
-    if (user && h > 0) {
+    if (user && !isNaN(h) && h !== 0) {
         await db.collection('escaladores').doc(user.uid).set({
             nombre: user.displayName,
             color: c,
             horasTotales: firebase.firestore.FieldValue.increment(h),
-            ultimoLog: d || "Estudiando duro"
+            ultimoLog: d || (h > 0 ? "Sumando horas" : "Corrigiendo tiempo")
         }, { merge: true });
+        
         document.getElementById('hInput').value = '';
         document.getElementById('dInput').value = '';
+        togglePanel(); 
     }
 };
 
-// 6. Service Worker para Instalación
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(e => console.error(e));
 }

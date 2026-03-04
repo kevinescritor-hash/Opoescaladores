@@ -5,57 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opoescaladores PWA</title>
     <link rel="manifest" href="manifest.json">
-    
-<button id="toggle-panel" onclick="togglePanel()" style="position:fixed; top:20px; left:20px; z-index:2000; border-radius:50%; width:50px; height:50px; font-size:1.5rem; background:rgba(255,255,255,0.2); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.3); color:white;">⚙️</button>
+    <style>
+        :root { --mtn-color: #4b3621; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; scroll-behavior: smooth; }
 
-<style>
-    /* Panel lateral colapsable */
-    .ui-panel {
-        position: fixed;
-        top: 0;
-        left: -320px; /* Escondido por defecto */
-        height: 100vh;
-        width: 280px;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-right: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 80px 20px 20px 20px;
-        display: flex; /* Cambiado de 'none' para que la transición funcione */
-        flex-direction: column;
-        gap: 15px;
-        transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        z-index: 1500;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-    }
+        /* Cielo y Nubes */
+        .sky { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #1e3c72, #2a5298, #87CEEB); z-index: -2; }
+        .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.7; animation: moveClouds linear infinite; }
+        @keyframes moveClouds { from { left: -200px; } to { left: 100vw; } }
 
-    /* Clase para abrir el panel */
-    .ui-panel.open {
-        left: 0;
-    }
+        /* Montaña */
+        .world { position: relative; width: 100%; height: 6500px; display: flex; justify-content: center; }
+        .mountain-svg { position: absolute; bottom: 0; width: 100%; max-width: 1000px; height: 6000px; z-index: -1; }
+        .mtn-body { fill: var(--mtn-color); }
+        .mtn-snow { fill: #ffffff; opacity: 0.9; }
+        .milestone { position: absolute; width: 100%; border-bottom: 2px dashed rgba(255,255,255,0.3); color: white; font-size: 0.8rem; padding-left: 10px; z-index: 1; }
 
-    /* Estilo para que los inputs no ocupen mucho */
-    .ui-panel input {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        border: 1px solid rgba(255,255,255,0.3);
-        padding: 10px;
-    }
-    .ui-panel input::placeholder { color: rgba(255,255,255,0.5); }
-</style>
+        /* Escaladores */
+        .climber { position: absolute; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        .climber-icon { font-size: 2.5rem; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
+        .label { background: rgba(0,0,0,0.8); color: white; border-radius: 6px; padding: 2px 8px; font-size: 11px; margin-top: 2px; white-space: nowrap; }
 
+        /* UI: Botón Menú */
+        #toggle-panel {
+            position: fixed; top: 15px; left: 15px; z-index: 2000;
+            width: 45px; height: 45px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            color: white; font-size: 1.2rem; cursor: pointer; display: none;
+        }
+
+        /* UI: Panel Lateral Glassmorphism */
+        .ui-panel {
+            position: fixed; top: 0; left: -300px; height: 100vh; width: 260px;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 80px 20px 20px 20px; display: flex; flex-direction: column; gap: 15px;
+            transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1); z-index: 1500;
+        }
+        .ui-panel.open { left: 0; }
+
+        /* Login e Inputs */
+        #login-screen { position: fixed; inset: 0; background: #1e3c72; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2500; }
+        input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; outline: none; }
+        button.main-btn { background: #27ae60; color: white; font-weight: bold; border: none; padding: 12px; border-radius: 10px; cursor: pointer; }
+    </style>
 </head>
 <body>
 
 <div class="sky">
     <div class="cloud" style="width:120px; height:40px; top:10%; animation-duration:30s;"></div>
     <div class="cloud" style="width:200px; height:60px; top:30%; animation-duration:50s; animation-delay:-5s;"></div>
-    <div class="cloud" style="width:150px; height:45px; top:60%; animation-duration:40s; animation-delay:-15s;"></div>
 </div>
 
 <div id="login-screen">
-    <h1 style="color:white; font-size: 3rem; margin-bottom: 20px;">⛰️ OpoClimb</h1>
-    <button onclick="loginConGoogle()" style="padding: 15px 40px; border-radius: 50px;">Iniciar con Google</button>
+    <h1 style="color:white; font-size: 2.5rem; margin-bottom: 20px;">⛰️ OpoClimb</h1>
+    <button class="main-btn" onclick="loginConGoogle()" style="padding: 15px 40px; border-radius: 50px;">Entrar con Google</button>
+</div>
+
+<button id="toggle-panel" onclick="togglePanel()">⚙️</button>
+
+<div class="ui-panel" id="app-content">
+    <h3 style="color:white; margin:0;">📊 Mi Progreso</h3>
+    <input type="number" id="hInput" placeholder="Horas (negativo resta)">
+    <input type="text" id="dInput" placeholder="¿Qué has estudiado?">
+    <div style="color:white; font-size: 0.8rem;">Color escalador:</div>
+    <input type="color" id="colorPicker" value="#ffffff" style="width:100%; height:40px; border:none; background:none; cursor:pointer;">
+    <button class="main-btn" onclick="addSession()">ACTUALIZAR</button>
+    <button onclick="auth.signOut()" style="background:none; color:#ff7675; border:none; margin-top:auto; cursor:pointer;">Cerrar Sesión</button>
 </div>
 
 <div class="world" id="world">
@@ -65,22 +81,9 @@
     </svg>
 </div>
 
-<div class="ui-panel" id="app-content">
-    <h3 style="color:white; margin:0;">🧗 Mi Progreso</h3>
-    <input type="number" id="hInput" placeholder="Horas (ej: 2.5)">
-    <input type="text" id="dInput" placeholder="¿Qué has estudiado?">
-    <div style="display:flex; align-items:center; justify-content: space-between; color:white; font-size:0.9rem;">
-        <span>Color del escalador:</span>
-        <input type="color" id="colorPicker" value="#ffffff" style="width:40px; height:40px; padding:2px; background:none;">
-    </div>
-    <button onclick="addSession()">SUBIR MONTAÑA</button>
-    <button class="btn-logout" onclick="auth.signOut()">Cerrar Sesión</button>
-</div>
-
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="app.js"></script>
-
 </body>
 </html>
