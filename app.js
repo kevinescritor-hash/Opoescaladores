@@ -14,46 +14,65 @@ const provider = new firebase.auth.GoogleAuthProvider();
 
 const SCALE = 20;
 
-// 1. Decorar con Cabras y Metas
-const world = document.getElementById('world');
-function initWorld() {
-    // Metas cada 30h
-    for(let i=30; i<=300; i+=30) {
-        const meta = document.createElement('div');
-        meta.className = 'milestone';
-        meta.style.bottom = (i * SCALE) + 'px';
-        meta.innerHTML = `🚩 Meta ${i}h`;
-        world.appendChild(meta);
+// 1. Función para abrir/cerrar panel
+window.togglePanel = () => {
+    const panel = document.getElementById('app-content');
+    panel.classList.toggle('open');
+};
+
+// 2. Modificación de addSession para permitir negativos
+window.addSession = async () => {
+    const user = auth.currentUser;
+    const hInput = document.getElementById('hInput');
+    const dInput = document.getElementById('dInput');
+    const cInput = document.getElementById('colorPicker');
+
+    const h = parseFloat(hInput.value);
+    
+    // Ahora solo pedimos que h no sea 0 (para permitir negativos)
+    if (user && h !== 0) {
+        await db.collection('escaladores').doc(user.uid).set({
+            nombre: user.displayName,
+            color: cInput.value,
+            // FieldValue.increment funciona perfectamente con números negativos para restar
+            horasTotales: firebase.firestore.FieldValue.increment(h),
+            ultimoLog: dInput.value || (h > 0 ? "Subiendo..." : "Bajando un poco")
+        }, { merge: true });
+        
+        hInput.value = '';
+        dInput.value = '';
+        togglePanel(); // Cerramos el panel automáticamente al terminar
     }
-    // Cabras aleatorias
-    for(let i=0; i<15; i++) {
-        const goat = document.createElement('div');
-        goat.className = 'goat';
-        goat.innerText = '🐐';
-        goat.style.bottom = (Math.random() * 5500 + 200) + 'px';
-        goat.style.left = (Math.random() * 60 + 20) + '%';
-        world.appendChild(goat);
+};
+
+// 3. Renderizado con auto-scroll mejorado
+function renderClimber(id, data, myUid) {
+    const div = document.createElement('div');
+    div.className = 'climber';
+    
+    // Aseguramos que las horas no bajen de 0 visualmente
+    const posicionReal = Math.max(0, data.horasTotales);
+    div.style.bottom = (posicionReal * SCALE) + 'px';
+    
+    const offset = (id.charCodeAt(0) % 40) - 20;
+    div.style.left = `calc(50% + ${offset}%)`;
+
+    div.innerHTML = `
+        <div class="climber-icon" style="color: ${data.color || '#ffffff'}">🧗‍♂️</div>
+        <div class="label" style="border-top: 3px solid ${data.color}">${data.nombre} (${data.horasTotales.toFixed(1)}h)</div>
+    `;
+
+    div.onclick = () => alert(`${data.nombre}:\n"${data.ultimoLog}"`);
+    world.appendChild(div);
+
+    // AUTO-SCROLL: Solo cuando es nuestro escalador
+    if(id === myUid) {
+        // Usamos un pequeño delay para que el DOM se asiente
+        setTimeout(() => {
+            div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 800);
     }
 }
-initWorld();
-
-// 2. Login
-window.loginConGoogle = () => auth.signInWithPopup(provider);
-
-// 3. Persistencia
-auth.onAuthStateChanged(user => {
-    if (user) {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app-content').style.display = 'flex';
-        db.collection('escaladores').onSnapshot(snap => {
-            document.querySelectorAll('.climber').forEach(el => el.remove());
-            snap.forEach(doc => renderClimber(doc.id, doc.data(), user.uid));
-        });
-    } else {
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('app-content').style.display = 'none';
-    }
-});
 
 // 4. Renderizado de Escaladores con Color
 function renderClimber(id, data, myUid) {

@@ -5,77 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opoescaladores PWA</title>
     <link rel="manifest" href="manifest.json">
-    <style>
-        :root { --mtn-color: #4b3621; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; scroll-behavior: smooth; }
+    
+<button id="toggle-panel" onclick="togglePanel()" style="position:fixed; top:20px; left:20px; z-index:2000; border-radius:50%; width:50px; height:50px; font-size:1.5rem; background:rgba(255,255,255,0.2); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.3); color:white;">⚙️</button>
 
-        /* Fondo de Cielo */
-        .sky {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, #1e3c72, #2a5298, #87CEEB);
-            z-index: -2;
-        }
+<style>
+    /* Panel lateral colapsable */
+    .ui-panel {
+        position: fixed;
+        top: 0;
+        left: -320px; /* Escondido por defecto */
+        height: 100vh;
+        width: 280px;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 80px 20px 20px 20px;
+        display: flex; /* Cambiado de 'none' para que la transición funcione */
+        flex-direction: column;
+        gap: 15px;
+        transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 1500;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
 
-        /* Nubes Animadas */
-        .cloud {
-            position: absolute; background: white; border-radius: 50px; opacity: 0.7;
-            animation: moveClouds linear infinite;
-        }
-        @keyframes moveClouds { from { left: -200px; } to { left: 100vw; } }
+    /* Clase para abrir el panel */
+    .ui-panel.open {
+        left: 0;
+    }
 
-        /* Montaña con Cima Nevada */
-        .world { position: relative; width: 100%; height: 6500px; display: flex; justify-content: center; }
-        .mountain-svg {
-            position: absolute; bottom: 0; width: 100%; max-width: 1000px; 
-            height: 6000px; z-index: -1;
-        }
-        .mtn-body { fill: var(--mtn-color); }
-        .mtn-snow { fill: #ffffff; opacity: 0.9; }
+    /* Estilo para que los inputs no ocupen mucho */
+    .ui-panel input {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+        padding: 10px;
+    }
+    .ui-panel input::placeholder { color: rgba(255,255,255,0.5); }
+</style>
 
-        /* Metas */
-        .milestone {
-            position: absolute; width: 100%; border-bottom: 2px dashed rgba(255,255,255,0.3);
-            color: white; font-size: 0.9rem; padding-left: 10px; display: flex; align-items: center; z-index: 1;
-        }
-
-        /* Elementos: Cabras */
-        .goat { position: absolute; font-size: 1.5rem; z-index: 1; opacity: 0.8; transition: transform 0.3s; }
-        .goat:hover { transform: scale(1.5) rotate(10deg); }
-
-        /* Escalador Personalizado */
-        .climber {
-            position: absolute; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 10;
-        }
-        .climber-icon { font-size: 3rem; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
-        .label { 
-            background: rgba(0,0,0,0.8); color: white; border-radius: 8px; 
-            padding: 4px 8px; font-size: 12px; margin-top: 5px; white-space: nowrap;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        /* UI Panel Lateral (Glassmorphism) */
-        #login-screen {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.7); 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000;
-        }
-        .ui-panel {
-            position: fixed; top: 20px; left: 20px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 20px; border-radius: 20px;
-            display: none; flex-direction: column; gap: 15px; 
-            width: 280px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1500;
-        }
-        input, button { 
-            padding: 12px; border-radius: 10px; border: none; outline: none;
-            background: rgba(255,255,255,0.9);
-        }
-        button { background: #27ae60; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #2ecc71; transform: translateY(-2px); }
-        .btn-logout { background: rgba(231, 76, 60, 0.8); margin-top: 10px; }
-    </style>
 </head>
 <body>
 
