@@ -14,6 +14,121 @@ const provider = new firebase.auth.GoogleAuthProvider();
 
 const SCALE = 20;
 
+let currentIconHito = '📚';
+let viewUserId = ''; // ID del usuario que estamos viendo en la mochila
+
+// 1. Lógica mejorada de sesión (ahora guarda historial para el icono dinámico)
+window.addSession = async () => {
+    const user = auth.currentUser;
+    const h = parseFloat(document.getElementById('hInput').value);
+    const d = document.getElementById('dInput').value;
+    const c = document.getElementById('colorPicker').value;
+
+    if (user && !isNaN(h) && h !== 0) {
+        const timestamp = Date.now();
+        const nuevaSesion = { h, d: d || "Estudiando", t: timestamp };
+
+        // Obtenemos el historial actual para añadir la nueva sesión
+        const doc = await db.collection('escaladores').doc(user.uid).get();
+        let historial = doc.exists ? (doc.data().historial || []) : [];
+        historial.push(nuevaSesion);
+
+        await db.collection('escaladores').doc(user.uid).set({
+            nombre: user.displayName,
+            color: c,
+            horasTotales: firebase.firestore.FieldValue.increment(h),
+            historial: historial // Guardamos el array de sesiones
+        }, { merge: true });
+        
+        document.getElementById('hInput').value = '';
+        document.getElementById('dInput').value = '';
+        togglePanel(); 
+    }
+};
+
+// 2. Función para calcular el icono basado en las últimas 24h
+function getDynamicIcon(historial) {
+    if (!historial || historial.length === 0) return '⛺';
+    
+    const unDiaAtras = Date.now() - (24 * 60 * 60 * 1000);
+    const horas24h = historial
+        .filter(s => s.t > unDiaAtras)
+        .reduce((acc, curr) => acc + curr.h, 0);
+
+    if (horas24h <= 0) return '⛺';
+    if (horas24h <= 3) return '🧗‍♂️';
+    if (horas24h <= 6) return '🐐';
+    return '🚀';
+}
+
+
+// 4. Lógica de la Mochila (Hitos)
+window.abrirMochila = (id, data) => {
+    viewUserId = id;
+    const myUid = auth.currentUser.uid;
+    document.getElementById('mochila-titulo').innerText = `🎒 Mochila de ${data.nombre}`;
+    document.getElementById('modal-mochila').style.display = 'flex';
+    
+    // Mostrar/Ocultar formulario de edición si eres el dueño
+    document.getElementById('form-hito').style.display = (id === myUid) ? 'block' : 'none';
+    
+    actualizarListaHitos(data.hitos || [], id === myUid);
+};
+
+window.cerrarMochila = () => {
+    document.getElementById('modal-mochila').style.display = 'none';
+};
+
+function actualizarListaHitos(hitos, esDuenio) {
+    const lista = document.getElementById('lista-hitos');
+    lista.innerHTML = hitos.length === 0 ? '<p style="font-size:0.8rem; opacity:0.5;">La mochila está vacía...</p>' : '';
+    
+    hitos.forEach((hito, index) => {
+        const item = document.createElement('div');
+        item.className = 'hito-item';
+        item.innerHTML = `
+            <span class="hito-icon">${hito.icon}</span>
+            <span>${hito.desc}</span>
+            ${esDuenio ? `<button class="btn-delete" onclick="borrarHito(${index})">🗑️</button>` : ''}
+        `;
+        lista.appendChild(item);
+    });
+}
+
+// 5. Gestión de Hitos
+window.selectIcon = (el, icon) => {
+    document.querySelectorAll('.icon-opt').forEach(opt => opt.classList.remove('selected'));
+    el.classList.add('selected');
+    currentIconHito = icon;
+};
+
+window.guardarHito = async () => {
+    const desc = document.getElementById('hitoDesc').value;
+    if (!desc) return;
+    
+    const userRef = db.collection('escaladores').doc(viewUserId);
+    const doc = await userRef.get();
+    let hitos = doc.data().hitos || [];
+    
+    hitos.push({ icon: currentIconHito, desc: desc });
+    await userRef.update({ hitos: hitos });
+    
+    document.getElementById('hitoDesc').value = '';
+    cerrarMochila(); // Recargará automáticamente vía onSnapshot
+};
+
+window.borrarHito = async (index) => {
+    if(!confirm("¿Borrar este hito?")) return;
+    const userRef = db.collection('escaladores').doc(viewUserId);
+    const doc = await userRef.get();
+    let hitos = doc.data().hitos || [];
+    
+    hitos.splice(index, 1);
+    await userRef.update({ hitos: hitos });
+    cerrarMochila();
+};
+
+
 // 1. UI Control
 window.togglePanel = () => {
     document.getElementById('app-content').classList.toggle('open');
@@ -46,52 +161,3 @@ auth.onAuthStateChanged(user => {
         document.getElementById('app-content').classList.remove('open');
     }
 });
-
-// 4. Renderizado y Auto-Scroll
-function renderClimber(id, data, myUid) {
-    const div = document.createElement('div');
-    div.className = 'climber';
-    if(id === myUid) div.id = 'my-climber';
-    
-    const posVisual = Math.max(0, data.horasTotales);
-    div.style.bottom = (posVisual * SCALE) + 'px';
-    const offset = (id.charCodeAt(0) % 40) - 20;
-    div.style.left = `calc(50% + ${offset}%)`;
-
-    div.innerHTML = `
-        <div class="climber-icon" style="color: ${data.color || '#ffffff'}">🧗‍♂️</div>
-        <div class="label" style="border-top: 3px solid ${data.color}">${data.nombre} (${data.horasTotales.toFixed(1)}h)</div>
-    `;
-
-    div.onclick = () => alert(`${data.nombre} dice:\n"${data.ultimoLog || '¡Subiendo!'}"`);
-    world.appendChild(div);
-
-    if(id === myUid) {
-        setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
-    }
-}
-
-// 5. Gestión de Sesiones (Subir/Bajar)
-window.addSession = async () => {
-    const user = auth.currentUser;
-    const h = parseFloat(document.getElementById('hInput').value);
-    const d = document.getElementById('dInput').value;
-    const c = document.getElementById('colorPicker').value;
-
-    if (user && !isNaN(h) && h !== 0) {
-        await db.collection('escaladores').doc(user.uid).set({
-            nombre: user.displayName,
-            color: c,
-            horasTotales: firebase.firestore.FieldValue.increment(h),
-            ultimoLog: d || (h > 0 ? "Sumando horas" : "Corrigiendo tiempo")
-        }, { merge: true });
-        
-        document.getElementById('hInput').value = '';
-        document.getElementById('dInput').value = '';
-        togglePanel(); 
-    }
-};
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(e => console.error(e));
-}

@@ -48,7 +48,32 @@
         #login-screen { position: fixed; inset: 0; background: #1e3c72; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2500; }
         input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; outline: none; }
         button.main-btn { background: #27ae60; color: white; font-weight: bold; border: none; padding: 12px; border-radius: 10px; cursor: pointer; }
-    </style>
+
+/* Estilos para el Modal de la Mochila */
+    .modal-mochila {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+        display: none; align-items: center; justify-content: center; z-index: 3000;
+        backdrop-filter: blur(5px);
+    }
+    .mochila-content {
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(20px); padding: 20px; border-radius: 20px;
+        width: 90%; max-width: 350px; color: white;
+    }
+    .lista-hitos { max-height: 200px; overflow-y: auto; margin: 15px 0; }
+    .hito-item {
+        background: rgba(255,255,255,0.1); margin-bottom: 8px; padding: 8px;
+        border-radius: 10px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
+    }
+    .hito-icon { font-size: 1.5rem; }
+    .btn-delete { background: none; border: none; color: #ff7675; cursor: pointer; margin-left: auto; }
+    
+    /* Selector de iconos compacto */
+    .icon-picker { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
+    .icon-opt { cursor: pointer; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1); }
+    .icon-opt.selected { background: #27ae60; }
+</style>
+
 </head>
 <body>
 
@@ -79,6 +104,26 @@
         <polygon class="mtn-body" points="50,0 100,100 0,100"/>
         <polygon class="mtn-snow" points="50,0 57.5,15 42.5,15"/>
     </svg>
+</div>
+
+<div id="modal-mochila" class="modal-mochila" onclick="if(event.target == this) cerrarMochila()">
+    <div class="mochila-content">
+        <h2 id="mochila-titulo" style="margin-top:0;">🎒 Mochila de...</h2>
+        <div id="lista-hitos" class="lista-hitos"></div>
+        
+        <div id="form-hito" style="display:none; border-top: 1px solid rgba(255,255,255,0.2); pt: 15px;">
+            <p style="font-size:0.8rem; margin: 10px 0;">Añadir hito a mi mochila:</p>
+            <div class="icon-picker">
+                <span class="icon-opt selected" onclick="selectIcon(this, '📚')">📚</span>
+                <span class="icon-opt" onclick="selectIcon(this, '💡')">💡</span>
+                <span class="icon-opt" onclick="selectIcon(this, '🏆')">🏆</span>
+                <span class="icon-opt" onclick="selectIcon(this, '🔥')">🔥</span>
+            </div>
+            <input type="text" id="hitoDesc" placeholder="Descripción breve..." style="width:100%; box-sizing:border-box; margin-bottom:10px;">
+            <button class="main-btn" onclick="guardarHito()" style="width:100%">AÑADIR HITO</button>
+        </div>
+        <button onclick="cerrarMochila()" style="width:100%; background:none; color:white; border:none; margin-top:10px; cursor:pointer;">Cerrar</button>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
