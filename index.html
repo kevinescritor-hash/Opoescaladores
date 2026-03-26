@@ -6,27 +6,40 @@
     <title>Opoescaladores PWA</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        :root { --mtn-color: #4b3621; }
+        :root { --mtn-color: #4b3621; --accent: #ff5722; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; scroll-behavior: smooth; }
 
         /* Cielo y Nubes */
-        .sky { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #1e3c72, #2a5298, #87CEEB); z-index: -2; }
+        .sky { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #1e3c72, #2a5298, #87CEEB); z-index: -2; transition: filter 1s; }
         .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.7; animation: moveClouds linear infinite; }
         @keyframes moveClouds { from { left: -200px; } to { left: 100vw; } }
 
+        /* Efecto Tormenta (200h-300h) */
+        @keyframes stormBlur {
+            0% { filter: contrast(100%) brightness(100%); }
+            50% { filter: contrast(150%) brightness(40%); }
+            100% { filter: contrast(100%) brightness(100%); }
+        }
+        .storm-active .sky { animation: stormBlur 5s infinite; }
+        .storm-active::after { content: ""; position: fixed; inset: 0; background: rgba(0,0,50,0.2); pointer-events: none; z-index: 5; }
+
         /* Montaña */
-        .world { position: relative; width: 100%; height: 6500px; display: flex; justify-content: center; }
-        .mountain-svg { position: absolute; bottom: 0; width: 100%; max-width: 1000px; height: 6000px; z-index: -1; }
-        .mtn-body { fill: var(--mtn-color); }
+        .world { position: relative; width: 100%; height: 8000px; display: flex; justify-content: center; background: transparent; }
+        .mountain-svg { position: absolute; bottom: 0; width: 100%; max-width: 1000px; height: 7500px; z-index: -1; }
+        .mtn-body { fill: var(--mtn-color); transition: fill 2s; }
         .mtn-snow { fill: #ffffff; opacity: 0.9; }
+        
+        /* Pared Rocosa (Visible a partir de 100h) */
+        #mtn-wall { fill: #2c3e50; opacity: 0; transition: opacity 2s; }
+
         .milestone { position: absolute; width: 100%; border-bottom: 2px dashed rgba(255,255,255,0.3); color: white; font-size: 0.8rem; padding-left: 10px; z-index: 1; }
 
         /* Escaladores */
-        .climber { position: absolute; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        .climber { position: absolute; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .climber-icon { font-size: 2.5rem; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
         .label { background: rgba(0,0,0,0.8); color: white; border-radius: 6px; padding: 2px 8px; font-size: 11px; margin-top: 2px; white-space: nowrap; }
 
-        /* UI: Botón Menú */
+        /* UI: Paneles */
         #toggle-panel {
             position: fixed; top: 15px; left: 15px; z-index: 2000;
             width: 45px; height: 45px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
@@ -34,46 +47,36 @@
             color: white; font-size: 1.2rem; cursor: pointer; display: none;
         }
 
-        /* UI: Panel Lateral Glassmorphism */
         .ui-panel {
             position: fixed; top: 0; left: -300px; height: 100vh; width: 260px;
-            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid rgba(255, 255, 255, 0.1);
             padding: 80px 20px 20px 20px; display: flex; flex-direction: column; gap: 15px;
-            transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1); z-index: 1500;
+            transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1); z-index: 1500; overflow-y: auto;
         }
         .ui-panel.open { left: 0; }
 
-        /* Login e Inputs */
+        /* Widgets de Retos */
+        .challenge-box {
+            background: rgba(255, 87, 34, 0.15); border: 1px solid var(--accent);
+            padding: 12px; border-radius: 12px; margin-top: 10px; display: none; color: white;
+        }
+        .challenge-days { font-size: 1.4rem; font-weight: bold; color: var(--accent); display: block; text-align: center; margin: 5px 0; }
+
         #login-screen { position: fixed; inset: 0; background: #1e3c72; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2500; }
-        input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; outline: none; }
-        button.main-btn { background: #27ae60; color: white; font-weight: bold; border: none; padding: 12px; border-radius: 10px; cursor: pointer; }
+        input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; outline: none; width: 100%; box-sizing: border-box; }
+        button.main-btn { background: #27ae60; color: white; font-weight: bold; border: none; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; }
 
-/* Estilos para el Modal de la Mochila */
-    .modal-mochila {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-        display: none; align-items: center; justify-content: center; z-index: 3000;
-        backdrop-filter: blur(5px);
-    }
-    .mochila-content {
-        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-        backdrop-filter: blur(20px); padding: 20px; border-radius: 20px;
-        width: 90%; max-width: 350px; color: white;
-    }
-    .lista-hitos { max-height: 200px; overflow-y: auto; margin: 15px 0; }
-    .hito-item {
-        background: rgba(255,255,255,0.1); margin-bottom: 8px; padding: 8px;
-        border-radius: 10px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
-    }
-    .hito-icon { font-size: 1.5rem; }
-    .btn-delete { background: none; border: none; color: #ff7675; cursor: pointer; margin-left: auto; }
-    
-    /* Selector de iconos compacto */
-    .icon-picker { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
-    .icon-opt { cursor: pointer; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1); }
-    .icon-opt.selected { background: #27ae60; }
-</style>
-
+        /* Modal Mochila */
+        .modal-mochila { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(5px); }
+        .mochila-content { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(20px); padding: 20px; border-radius: 20px; width: 90%; max-width: 350px; color: white; }
+        .lista-hitos { max-height: 200px; overflow-y: auto; margin: 15px 0; }
+        .hito-item { background: rgba(255,255,255,0.1); margin-bottom: 8px; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+        .btn-delete { background: none; border: none; color: #ff7675; cursor: pointer; margin-left: auto; }
+        .icon-picker { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
+        .icon-opt { cursor: pointer; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1); }
+        .icon-opt.selected { background: #27ae60; }
+    </style>
 </head>
 <body>
 
@@ -84,43 +87,59 @@
 
 <div id="login-screen">
     <h1 style="color:white; font-size: 2.5rem; margin-bottom: 20px;">⛰️ OpoClimb</h1>
-    <button class="main-btn" onclick="loginConGoogle()" style="padding: 15px 40px; border-radius: 50px;">Entrar con Google</button>
+    <button class="main-btn" onclick="loginConGoogle()" style="padding: 15px 40px; border-radius: 50px; width:auto;">Entrar con Google</button>
 </div>
 
 <button id="toggle-panel" onclick="togglePanel()">⚙️</button>
 
 <div class="ui-panel" id="app-content">
     <h3 style="color:white; margin:0;">📊 Mi Progreso</h3>
-    <input type="number" id="hInput" placeholder="Horas (negativo resta)">
+    <input type="number" id="hInput" placeholder="Horas (Ej: 6.5)">
     <input type="text" id="dInput" placeholder="¿Qué has estudiado?">
-    <div style="color:white; font-size: 0.8rem;">Color escalador:</div>
-    <input type="color" id="colorPicker" value="#ffffff" style="width:100%; height:40px; border:none; background:none; cursor:pointer;">
+    <div style="color:white; font-size: 0.8rem;">Color de tu icono:</div>
+    <input type="color" id="colorPicker" value="#ffffff" style="height:40px; border:none; background:none; cursor:pointer;">
     <button class="main-btn" onclick="addSession()">ACTUALIZAR</button>
-    <button onclick="auth.signOut()" style="background:none; color:#ff7675; border:none; margin-top:auto; cursor:pointer;">Cerrar Sesión</button>
+
+    <div id="status-retos">
+        <div id="cave-status" class="challenge-box">
+            <p style="margin:0; font-size:0.75rem;">🏚️ <b>ENTRENAMIENTO EN CUEVA</b></p>
+            <span id="cave-count" class="challenge-days">0 / 3 días</span>
+            <p style="font-size:0.65rem; margin:0; opacity:0.8;">Reto: +6h diarias</p>
+        </div>
+        <div id="rocket-status" class="challenge-box">
+            <p style="margin:0; font-size:0.75rem;">🚀 <b>PREPARACIÓN LANZAMIENTO</b></p>
+            <span id="rocket-count" class="challenge-days">0 / 7 días</span>
+            <p style="font-size:0.65rem; margin:0; opacity:0.8;">Reto: +3h diarias</p>
+        </div>
+    </div>
+
+    <button onclick="auth.signOut()" style="background:none; color:#ff7675; border:none; margin-top:auto; cursor:pointer; padding: 10px;">Cerrar Sesión</button>
 </div>
 
 <div class="world" id="world">
     <svg class="mountain-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
         <polygon class="mtn-body" points="50,0 100,100 0,100"/>
-        <polygon class="mtn-snow" points="50,0 57.5,15 42.5,15"/>
+        <polygon id="mtn-wall" points="50,0 100,100 0,100"/>
+        <polygon class="mtn-snow" points="50,0 55,10 45,10"/>
     </svg>
+    
+    <div style="position:absolute; bottom:2000px; left:50%; transform:translateX(-50%); font-size:3rem; z-index:1;">🕳️</div>
+    <div style="position:absolute; bottom:6000px; left:50%; transform:translateX(-50%); font-size:4rem; z-index:1;">🚀</div>
 </div>
 
 <div id="modal-mochila" class="modal-mochila" onclick="if(event.target == this) cerrarMochila()">
     <div class="mochila-content">
-        <h2 id="mochila-titulo" style="margin-top:0;">🎒 Mochila de...</h2>
+        <h2 id="mochila-titulo" style="margin:0 0 10px 0;">🎒 Mochila</h2>
         <div id="lista-hitos" class="lista-hitos"></div>
-        
-        <div id="form-hito" style="display:none; border-top: 1px solid rgba(255,255,255,0.2); pt: 15px;">
-            <p style="font-size:0.8rem; margin: 10px 0;">Añadir hito a mi mochila:</p>
+        <div id="form-hito" style="display:none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
             <div class="icon-picker">
                 <span class="icon-opt selected" onclick="selectIcon(this, '📚')">📚</span>
                 <span class="icon-opt" onclick="selectIcon(this, '💡')">💡</span>
                 <span class="icon-opt" onclick="selectIcon(this, '🏆')">🏆</span>
                 <span class="icon-opt" onclick="selectIcon(this, '🔥')">🔥</span>
             </div>
-            <input type="text" id="hitoDesc" placeholder="Descripción breve..." style="width:100%; box-sizing:border-box; margin-bottom:10px;">
-            <button class="main-btn" onclick="guardarHito()" style="width:100%">AÑADIR HITO</button>
+            <input type="text" id="hitoDesc" placeholder="Hito conseguido..." style="margin-bottom:10px;">
+            <button class="main-btn" onclick="guardarHito()">AÑADIR HITO</button>
         </div>
         <button onclick="cerrarMochila()" style="width:100%; background:none; color:white; border:none; margin-top:10px; cursor:pointer;">Cerrar</button>
     </div>

@@ -13,51 +13,125 @@ const db = firebase.firestore();
 const provider = new firebase.auth.GoogleAuthProvider();
 
 const SCALE = 20;
+const CAVE_START = 100;
+const STORM_START = 200;
+const ROCKET_START = 300;
+
 let currentIconHito = '📚';
 let viewUserId = ''; 
 
-// 1. Gestión de Sesiones e Icono Dinámico
+// --- 1. LÓGICA DE SESIONES Y RETOS ---
+
 window.addSession = async () => {
     const user = auth.currentUser;
     const h = parseFloat(document.getElementById('hInput').value);
-    const d = document.getElementById('dInput').value;
+    const d = document.getElementById('dInput').value || "Estudiando";
     const c = document.getElementById('colorPicker').value;
 
-    if (user && !isNaN(h) && h !== 0) {
-        const timestamp = Date.now();
-        const nuevaSesion = { h, d: d || "Estudiando", t: timestamp };
+    if (!user || isNaN(h) || h === 0) return;
 
-        const doc = await db.collection('escaladores').doc(user.uid).get();
-        let historial = doc.exists ? (doc.data().historial || []) : [];
-        historial.push(nuevaSesion);
+    const userRef = db.collection('escaladores').doc(user.uid);
+    const doc = await userRef.get();
+    const data = doc.data();
+    let currentH = data.horasTotales || 0;
 
-        await db.collection('escaladores').doc(user.uid).set({
-            nombre: user.displayName,
-            color: c,
-            horasTotales: firebase.firestore.FieldValue.increment(h),
-            historial: historial 
-        }, { merge: true });
-        
-        document.getElementById('hInput').value = '';
-        document.getElementById('dInput').value = '';
-        togglePanel(); 
+    // RETO CUEVA (100h) - Bloqueo de progreso
+    if (currentH >= CAVE_START && currentH < 101 && !data.caveSuccess) {
+        await manejarReto(userRef, data, h, 6, 3, 'caveProgress', 'caveSuccess', "¡Entrenamiento completado! Reanudas tu escalada.");
+        return;
     }
+
+    // RETO COHETE (300h) - Bloqueo de progreso
+    if (currentH >= ROCKET_START && !data.rocketSuccess) {
+        await manejarReto(userRef, data, h, 3, 7, 'rocketProgress', 'rocketSuccess', "¡TODO LISTO PARA EL DESPEGUE! Enhorabuena.");
+        return;
+    }
+
+    // Si no hay bloqueos, suma normal
+    const nuevaSesion = { h, d, t: Date.now() };
+    let historial = data.historial || [];
+    historial.push(nuevaSesion);
+
+    await userRef.set({
+        nombre: user.displayName,
+        color: c,
+        horasTotales: firebase.firestore.FieldValue.increment(h),
+        historial: historial 
+    }, { merge: true });
+    
+    document.getElementById('hInput').value = '';
+    document.getElementById('dInput').value = '';
+    togglePanel(); 
 };
 
-function getDynamicIcon(historial) {
-    if (!historial || historial.length === 0) return '⛺';
-    const unDiaAtras = Date.now() - (24 * 60 * 60 * 1000);
-    const horas24h = historial
-        .filter(s => s.t > unDiaAtras)
-        .reduce((acc, curr) => acc + curr.h, 0);
+// Función genérica para gestionar retos de días consecutivos
+async function manejarReto(ref, data, horasHoy, minHoras, diasReq, fieldProgress, fieldSuccess, msgFin) {
+    let progress = data[fieldProgress] || { count: 0, lastDate: null };
+    const hoy = new Date().toLocaleDateString();
 
-    if (horas24h <= 0) return '⛺';
-    if (horas24h <= 3) return '🧗‍♂️';
-    if (horas24h <= 6) return '🐐';
-    return '🚀';
+    if (progress.lastDate === hoy) {
+        alert("Ya has registrado tu esfuerzo de hoy para el reto. ¡Vuelve mañana!");
+        return;
+    }
+
+    if (horasHoy >= minHoras) {
+        progress.count += 1;
+        progress.lastDate = hoy;
+        
+        if (progress.count >= diasReq) {
+            alert(msgFin);
+            await ref.update({ 
+                [fieldSuccess]: true, 
+                horasTotales: firebase.firestore.FieldValue.increment(0.1) // Empujoncito para salir del umbral
+            });
+        } else {
+            alert(`¡Buen trabajo! Día ${progress.count}/${diasReq} superado.`);
+            await ref.update({ [fieldProgress]: progress });
+        }
+    } else {
+        alert(`No has alcanzado las ${minHoras}h mínimas. El contador vuelve a 0.`);
+        await ref.update({ [fieldProgress]: { count: 0, lastDate: null } });
+    }
+    document.getElementById('hInput').value = '';
+    togglePanel();
 }
 
-// 2. Renderizado (LA FUNCIÓN QUE FALTABA)
+// Lógica de la tormenta (Resta 3h cada día nuevo)
+async function verificarTormenta(ref, data) {
+    if (data.horasTotales >= STORM_START && data.horasTotales < ROCKET_START) {
+        const hoy = new Date().toLocaleDateString();
+        if (data.lastStormCheck !== hoy) {
+            await ref.update({
+                horasTotales: firebase.firestore.FieldValue.increment(-3),
+                lastStormCheck: hoy
+            });
+            alert("🌬️ Durante la noche el viento de la tormenta te empujó 3h atrás...");
+        }
+    }
+}
+
+// Iconos dinámicos (Incluye Cohete y Asteroide)
+function getDynamicIcon(data) {
+    const hTotales = data.horasTotales || 0;
+    const historial = data.historial || [];
+    const unDiaAtras = Date.now() - (24 * 60 * 60 * 1000);
+    const activoHoy = historial.some(s => s.t > unDiaAtras);
+
+    // Si ha pasado el nivel 300 y el reto
+    if (hTotales >= ROCKET_START && data.rocketSuccess) {
+        return activoHoy ? '🚀' : '☄️';
+    }
+
+    if (!activoHoy) return '⛺';
+    const horas24h = historial.filter(s => s.t > unDiaAtras).reduce((acc, curr) => acc + curr.h, 0);
+    
+    if (horas24h <= 3) return '🧗‍♂️';
+    if (horas24h <= 6) return '🐐';
+    return '🔥';
+}
+
+// --- 2. RENDERIZADO ---
+
 function renderClimber(id, data, myUid) {
     const div = document.createElement('div');
     div.className = 'climber';
@@ -68,7 +142,7 @@ function renderClimber(id, data, myUid) {
     const offset = (id.charCodeAt(0) % 40) - 20;
     div.style.left = `calc(50% + ${offset}%)`;
 
-    const icon = getDynamicIcon(data.historial);
+    const icon = getDynamicIcon(data);
 
     div.innerHTML = `
         <div class="climber-icon" style="color: ${data.color || '#ffffff'}">${icon}</div>
@@ -78,12 +152,39 @@ function renderClimber(id, data, myUid) {
     div.onclick = () => abrirMochila(id, data);
     document.getElementById('world').appendChild(div);
 
+    // Ajustes visuales si soy yo
     if(id === myUid) {
-        setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
+        const wall = document.getElementById('mtn-wall');
+        const body = document.body;
+
+        // Pared rocosa
+        wall.style.opacity = data.horasTotales >= 100 ? "0.8" : "0";
+        
+        // Tormenta
+        if (data.horasTotales >= 200 && data.horasTotales < 300) {
+            body.classList.add('storm-active');
+            verificarTormenta(db.collection('escaladores').doc(id), data);
+        } else {
+            body.classList.remove('storm-active');
+        }
+
+        // Mostrar widgets de retos
+        const caveBox = document.getElementById('cave-status');
+        if (data.horasTotales >= 100 && !data.caveSuccess) {
+            caveBox.style.display = 'block';
+            document.getElementById('cave-count').innerText = `${data.caveProgress?.count || 0} / 3 días`;
+        } else { caveBox.style.display = 'none'; }
+
+        const rocketBox = document.getElementById('rocket-status');
+        if (data.horasTotales >= 300 && !data.rocketSuccess) {
+            rocketBox.style.display = 'block';
+            document.getElementById('rocket-count').innerText = `${data.rocketProgress?.count || 0} / 7 días`;
+        } else { rocketBox.style.display = 'none'; }
     }
 }
 
-// 3. Mochila e Hitos
+// --- 3. MOCHILA E HITOS (Sin cambios) ---
+
 window.abrirMochila = (id, data) => {
     viewUserId = id;
     const myUid = auth.currentUser.uid;
@@ -138,11 +239,13 @@ window.borrarHito = async (index) => {
     cerrarMochila();
 };
 
-// 4. UI y Auth
+// --- 4. INICIO Y UI ---
+
 window.togglePanel = () => { document.getElementById('app-content').classList.toggle('open'); };
 
+// Dibujar metas
 const world = document.getElementById('world');
-for(let i=30; i<=300; i+=30) {
+for(let i=100; i<=500; i+=100) {
     const meta = document.createElement('div');
     meta.className = 'milestone';
     meta.style.bottom = (i * SCALE) + 'px';
