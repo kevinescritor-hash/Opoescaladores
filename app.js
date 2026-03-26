@@ -160,12 +160,9 @@ function renderClimber(id, data, myUid) {
         // Pared rocosa
         wall.style.opacity = data.horasTotales >= 100 ? "0.8" : "0";
         
-        // Tormenta
+       // Tormenta (Lógica de penalización horaria)
         if (data.horasTotales >= 200 && data.horasTotales < 300) {
-            body.classList.add('storm-active');
             verificarTormenta(db.collection('escaladores').doc(id), data);
-        } else {
-            body.classList.remove('storm-active');
         }
 
         // Mostrar widgets de retos

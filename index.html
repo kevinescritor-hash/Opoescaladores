@@ -14,14 +14,55 @@
         .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.7; animation: moveClouds linear infinite; }
         @keyframes moveClouds { from { left: -200px; } to { left: 100vw; } }
 
-        /* Efecto Tormenta (200h-300h) */
-        @keyframes stormBlur {
-            0% { filter: contrast(100%) brightness(100%); }
-            50% { filter: contrast(150%) brightness(40%); }
-            100% { filter: contrast(100%) brightness(100%); }
-        }
-        .storm-active .sky { animation: stormBlur 5s infinite; }
-        .storm-active::after { content: ""; position: fixed; inset: 0; background: rgba(0,0,50,0.2); pointer-events: none; z-index: 5; }
+       /* --- ZONA DE TORMENTA (200h - 300h) --- */
+.storm-zone {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    /* Un degradado muy oscuro que simula nubarrones */
+    background: linear-gradient(to bottom, rgba(15, 20, 30, 0.95), rgba(35, 45, 65, 0.8), rgba(15, 20, 30, 0.95));
+    z-index: 15; /* Z-index 15 hace que la lluvia caiga POR ENCIMA de los escaladores */
+    pointer-events: none; /* Permite hacer clic a los escaladores a través de la tormenta */
+    overflow: hidden;
+}
+/* Efecto de lluvia racheada */
+.storm-zone::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(105deg, transparent, transparent 20px, rgba(255,255,255,0.15) 20px, rgba(255,255,255,0.15) 22px);
+    background-size: 200% 200%;
+    animation: rainDrop 0.4s linear infinite;
+}
+/* Efecto de relámpagos */
+.storm-zone::after {
+    content: ""; position: absolute; inset: 0; background: white; opacity: 0;
+    animation: thunder 7s infinite;
+}
+@keyframes rainDrop { 0% { background-position: 0 0; } 100% { background-position: 100px 200px; } }
+@keyframes thunder { 0%, 94%, 98% { opacity: 0; } 95% { opacity: 0.3; } 97% { opacity: 0.5; } }
+
+/* --- CUEVA DEL ENTRENAMIENTO (100h) --- */
+.cave-entrance {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 120px;
+    background: radial-gradient(circle at bottom, #000000 40%, #1a1a1a 80%, #2c2c2c 100%);
+    border-radius: 50% 50% 0 0;
+    border: 8px solid #2a2a2a; border-bottom: none;
+    box-shadow: inset 0px 20px 50px rgba(0,0,0,0.9), 0px 5px 15px rgba(0,0,0,0.5);
+    z-index: 8; display: flex; justify-content: center; align-items: flex-end;
+}
+/* Ojos brillantes observando desde la oscuridad */
+.cave-entrance::before {
+    content: "👀"; position: absolute; bottom: 30px; font-size: 1.5rem; opacity: 0.8;
+    animation: blink 4s infinite;
+}
+.cave-label {
+    position: absolute; top: -35px; background: rgba(0,0,0,0.8);
+    padding: 5px 12px; border-radius: 5px; color: #ff9800;
+    font-size: 0.85rem; font-weight: bold; border: 1px solid #ff9800; white-space: nowrap;
+}
+@keyframes blink { 0%, 96%, 98% { opacity: 0.8; } 97%, 99% { opacity: 0; } }
 
         /* Montaña */
         .world { position: relative; width: 100%; height: 8000px; display: flex; justify-content: center; background: transparent; }
@@ -76,7 +117,84 @@
         .icon-picker { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
         .icon-opt { cursor: pointer; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1); }
         .icon-opt.selected { background: #27ae60; }
-    </style>
+
+/* --- NUEVO: PLATAFORMA DE LANZAMIENTO ILUSTRADA (300h) --- */
+    .launch-pad-container {
+        position: absolute; left: 50%; transform: translateX(-50%);
+        width: 220px; height: 160px; /* Espacio para estructura y humo */
+        z-index: 5; /* Por detrás de climbers (z:10) */
+        pointer-events: none;
+    }
+
+    /* Cubierta principal (hormigón/metal oscuro) */
+    .pad-deck {
+        position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+        width: 130px; height: 18px;
+        background: #4a4a4a; /* Gris base */
+        border: 3px solid #2a2a2a; border-radius: 4px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.6), inset 0 2px 2px rgba(255,255,255,0.1);
+        overflow: hidden;
+    }
+    /* Franjas de Peligro amarillas y negras ( Hazard stripes ) */
+    .pad-deck::before {
+        content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 50%;
+        background: repeating-linear-gradient(45deg, #f1c40f, #f1c40f 8px, #2c3e50 8px, #2c3e50 16px);
+        opacity: 0.8;
+    }
+
+    /* Estructura de soporte trapezoidal (metal girders) */
+    .pad-supports {
+        position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+        width: 90px; height: 35px;
+        background: #333; /* Metal oscuro */
+        border: 2px solid #1a1a1a;
+        clip-path: polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
+    }
+
+    /* Torres de servicio laterales (flanking towers) con luces cian */
+    .pad-tower {
+        position: absolute; bottom: 0; width: 12px; height: 70px;
+        background: #555; border: 2px solid #2a2a2a; border-radius: 2px;
+    }
+    /* Luces de estado Cyan parpadeantes */
+    .pad-tower::after {
+        content: ""; position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+        width: 4px; height: 4px; background: cyan; border-radius: 50%;
+        box-shadow: 0 0 10px cyan; animation: statusBlink 2s infinite;
+    }
+    .pad-tower.left { left: 15px; }
+    .pad-tower.right { right: 15px; }
+
+    /* Etiqueta del hito */
+    .pad-label {
+        position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+        background: rgba(0,0,0,0.85); padding: 3px 10px; border-radius: 4px;
+        color: cyan; font-size: 0.8rem; font-weight: bold; border: 1px solid cyan;
+        white-space: nowrap; text-shadow: 0 0 5px cyan; z-index: 10;
+    }
+
+    /* Animación del cohete estático vibrando suavemente (listo para despegar) */
+    .pad-rocket-map {
+        position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%) rotate(-45deg);
+        font-size: 4rem; z-index: 10;
+        animation: rocketReadyVibrate 2.5s ease-in-out infinite;
+    }
+    
+    /* Efecto de humo/vapor estilizado saliendo de la base */
+    .pad-smoke {
+        position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%);
+        width: 40px; height: 15px; background: rgba(200,200,200,0.4);
+        border-radius: 50%; z-index: 9; filter: blur(5px);
+        animation: smokePuff 1.8s ease-out infinite;
+    }
+
+    @keyframes statusBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    @keyframes rocketReadyVibrate { 0%, 100% { transform: translateX(-50%) rotate(-45deg); } 50% { transform: translateX(-50%) rotate(-45deg) translateY(-4px); } }
+    @keyframes smokePuff {
+        0% { transform: translateX(-50%) scale(1); opacity: 0.4; }
+        100% { transform: translateX(-50%) scale(3) translateY(-20px); opacity: 0; }
+    }
+</style>
 </head>
 <body>
 
@@ -123,8 +241,27 @@
         <polygon class="mtn-snow" points="50,0 55,10 45,10"/>
     </svg>
     
-    <div style="position:absolute; bottom:2000px; left:50%; transform:translateX(-50%); font-size:3rem; z-index:1;">🕳️</div>
-    <div style="position:absolute; bottom:6000px; left:50%; transform:translateX(-50%); font-size:4rem; z-index:1;">🚀</div>
+    <div class="storm-zone" style="bottom: 4000px; height: 2000px;">
+        <div style="position:absolute; bottom: 20px; width: 100%; text-align: center; color: #a8b2d1; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 4px black; z-index: 20;">
+            ⚡ ZONA DE TORMENTA (200h) ⚡<br>
+            <span style="font-size: 0.8rem; color: #ff7675;">Sobrevive a la ventisca. El viento resta 3h cada noche.</span>
+        </div>
+    </div>
+
+    <div class="cave-entrance" style="bottom: 2000px;">
+        <span class="cave-label">Cueva de Entrenamiento (100h)</span>
+    </div>
+
+   <div class="launch-pad-container" style="bottom: 6000px;">
+        <span class="pad-label">PLATAFORMA DE LANZAMIENTO ORBITAL (300h)</span>
+        <div class="pad-tower left"></div>
+        <div class="pad-tower right"></div>
+        <div class="pad-supports"></div>
+        <div class="pad-deck"></div>
+        <div class="pad-smoke" style="animation-delay: 0s;"></div>
+        <div class="pad-smoke" style="animation-delay: 0.6s;"></div>
+        <div class="pad-rocket-map">🚀</div>
+    </div>
 </div>
 
 <div id="modal-mochila" class="modal-mochila" onclick="if(event.target == this) cerrarMochila()">
